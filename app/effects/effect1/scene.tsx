@@ -16,8 +16,9 @@ const Effect1Scene = () => {
   });
 
   return (
-    <mesh ref={ref}>
-      <planeGeometry args={[10, 10]} />
+    <mesh ref={ref} position={[0, 5, 0]}>
+      {/* <planeGeometry args={[10, 10]} /> */}
+      <sphereGeometry args={[5, 128, 128]} />
       <shader iResolution={new Vector2(size.width, size.height)} />
     </mesh>
   );

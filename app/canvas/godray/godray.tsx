@@ -5,11 +5,7 @@ import { Resizer, KernelSize, BlendFunction } from "postprocessing";
 
 const GodrayPlane = forwardRef<any>(function Sun(_props, forwardRef) {
   return (
-    <mesh
-      position={[0, 5.6, -9]}
-      ref={forwardRef}
-      rotation={[Math.PI * 0.943, 0, 0]}
-    >
+    <mesh position={[0, 0, -6.35]} ref={forwardRef} rotation={[Math.PI, 0, 0]}>
       <planeGeometry args={[13, 40]} />
       <meshBasicMaterial transparent />
     </mesh>

@@ -3,8 +3,9 @@ import { Vector2 } from "three";
 
 const Shader = shaderMaterial(
   {
-    iResolution: null,
+    iResolution: new Vector2(),
     iTime: 0,
+    iMouse: new Vector2(),
   },
   // vertex shader
   /*glsl*/ `
@@ -18,108 +19,92 @@ const Shader = shaderMaterial(
   /*glsl*/ `
     uniform vec2 iResolution;
     uniform float iTime;
+    uniform vec2 iMouse;
     varying vec2 vUv;
 
-    void main() {
-      vec3 yColor = vec3(0.9, 0.5, 0.3);
+    float Hash3d(vec3 uv)
+{
+    float f = uv.x + uv.y * 37.0 + uv.z * 521.0;
+    return fract(cos(f*3.333)*100003.9);
+}
+float mixP(float f0, float f1, float a)
+{
+    return mix(f0, f1, a*a*(3.0-2.0*a));
+}
+const vec2 zeroOne = vec2(0.0, 1.0);
+float noise(vec3 uv)
+{
+    vec3 fr = fract(uv.xyz);
+    vec3 fl = floor(uv.xyz);
+    float h000 = Hash3d(fl);
+    float h100 = Hash3d(fl + zeroOne.yxx);
+    float h010 = Hash3d(fl + zeroOne.xyx);
+    float h110 = Hash3d(fl + zeroOne.yyx);
+    float h001 = Hash3d(fl + zeroOne.xxy);
+    float h101 = Hash3d(fl + zeroOne.yxy);
+    float h011 = Hash3d(fl + zeroOne.xyy);
+    float h111 = Hash3d(fl + zeroOne.yyy);
+    return mixP(
+        mixP(mixP(h000, h100, fr.x), mixP(h010, h110, fr.x), fr.y),
+        mixP(mixP(h001, h101, fr.x), mixP(h011, h111, fr.x), fr.y)
+        , fr.z);
+}
 
-      vec2 p = (vec2(gl_FragCoord.yx)  - iResolution.yx);
-      p *= sin(iTime / 20.0);
+float PI=3.14159265;
+#define clamp(a) clamp(a, 0.0, 1.0)
+#define ZERO_TRICK max(0, -int(iTime))
 
-      float d = sin(iTime * 0.005 + 3.14) / 1.0;
+float Density(vec3 p)
+{
+    float final = noise(p*0.06125);
+    float other = noise(p*0.06125 + 1234.567);
+    other -= 0.5;
+    final -= 0.5;
+    final = 0.1/(abs(final*final*other));
+    final += 0.5;
+    return final*0.0001;
+}
 
-      float h = 0.3 / abs(p.x * d);
+void main()
+{
+	vec2 uv = gl_FragCoord.xy/iResolution.xy * 2.0 - 1.0;
 
-      vec3 destColor = yColor * h;
-      gl_FragColor = vec4(destColor, 1.0);
-  }
+	vec3 camUp=vec3(0,1,0);
 
+	vec3 camLookat=vec3(0,0.0,0);
+
+	float mx = iMouse.x/iResolution.x*PI*2.0 + iTime * 0.01;
+	float my = -iMouse.y/iResolution.y*10.0 + sin(iTime * 0.03)*0.2+0.2;
+	vec3 camPos=vec3(cos(my)*cos(mx),sin(my),cos(my)*sin(mx))*(200.2); 
+
+	vec3 camVec=normalize(camLookat - camPos);//vpn
+	vec3 sideNorm=normalize(cross(camUp, camVec));	// u
+	vec3 upNorm=cross(camVec, sideNorm);//v
+	vec3 worldFacing=(camPos + camVec);//vcv
+	vec3 worldPix = worldFacing + uv.x * sideNorm * (iResolution.x/iResolution.y) + uv.y * upNorm;//scrCoord
+	vec3 relVec = normalize(worldPix - camPos);//scp
+
+	float t = 0.0;
+	float inc = 0.02;
+	float maxDepth = 70.0;
+	vec3 pos = vec3(0,0,0);
+    float density = 0.0;
+    for (int i = int(ZERO_TRICK); i < 37; i++)	
+    {
+        if ((t > maxDepth)) break;
+        pos = camPos + relVec * t;
+        float temp = Density(pos);
+
+        inc = 1.9 + temp*0.05;	
+        density += temp * inc;
+        t += inc;
+    }
+
+	vec3 finalColor = vec3(0.01,0.1,1.0)* density*0.2;
+
+  gl_FragColor = vec4(min(max(finalColor, vec3(0.0)), vec3(1.0)), 1.0); 
+}
     `
 );
-
-// const Shader = shaderMaterial(
-//   {
-//     iResolution: null,
-//     iTime: 0,
-//   },
-//   // vertex shader
-//   /*glsl*/ `
-//     varying vec2 vUv;
-
-//     void main() {
-//         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-//     }
-//     `,
-//   // fragment shader
-//   /*glsl*/ `
-//     uniform vec2 iResolution;
-//     uniform float iTime;
-//     varying vec2 vUv;
-
-//     float noise(vec3 p) //Thx to Las^Mercury
-// {
-// 	vec3 i = floor(p);
-// 	vec4 a = dot(i, vec3(1., 57., 21.)) + vec4(0., 57., 21., 78.);
-// 	vec3 f = cos((p-i)*acos(-1.))*(-.5)+.5;
-// 	a = mix(sin(cos(a)*a),sin(cos(1.+a)*(1.+a)), f.x);
-// 	a.xy = mix(a.xz, a.yw, f.y);
-// 	return mix(a.x, a.y, f.z);
-// }
-
-// float sphere(vec3 p, vec4 spr)
-// {
-// 	return length(spr.xyz-p) - spr.w;
-// }
-
-// float flame(vec3 p)
-// {
-// 	float d = sphere(p*vec3(1.,.5,1.), vec4(.0,-1.,.0,1.));
-// 	return d + (noise(p+vec3(.0,iTime*2.,.0)) + noise(p*3.)*.5)*.25*(p.y) ;
-// }
-
-// float scene(vec3 p)
-// {
-// 	return min(100.-length(p) , abs(flame(p)) );
-// }
-
-// vec4 raymarch(vec3 org, vec3 dir)
-// {
-// 	float d = 0.0, glow = 0.0, eps = 0.02;
-// 	vec3  p = org;
-// 	bool glowed = false;
-
-// 	for(int i=0; i<64; i++)
-// 	{
-// 		d = scene(p) + eps;
-// 		p += d * dir;
-// 		if( d>eps )
-// 		{
-// 			if(flame(p) < .0)
-// 				glowed=true;
-// 			if(glowed)
-//        			glow = float(i)/64.;
-// 		}
-// 	}
-// 	return vec4(p,glow);
-// }
-
-// void main()
-// {
-// 	vec2 v = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
-// 	v.x *= iResolution.x/iResolution.y;
-
-// 	vec3 org = vec3(0., -2., 4.);
-// 	vec3 dir = normalize(vec3(v.x*1.6, -v.y, -1.5));
-
-// 	vec4 p = raymarch(org, dir);
-// 	float glow = p.w;
-
-// 	vec4 col = mix(vec4(1.,.5,.1,1.), vec4(0.1,.5,1.,1.), p.y*.02+.4);
-
-// 	gl_FragColor = mix(vec4(0.), col, pow(glow*2.,4.));
-
-// }
-//     `
-// );
 
 export { Shader };

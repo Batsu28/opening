@@ -1,3 +1,6 @@
+"use client";
+
+import { useGesture } from "@use-gesture/react";
 import BoxCanvas from "./canvas/boxCanvas";
 import EffectCanvas from "./effects/effectCanvas";
 

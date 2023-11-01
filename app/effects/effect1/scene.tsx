@@ -16,8 +16,8 @@ const Effect1Scene = () => {
   const { size } = useThree();
   const positions = useMemo(() => {
     let PositionArr = [];
-    for (let x = 0; x < 12; x++) {
-      for (let y = 0; y < 36; y++) {
+    for (let x = 0; x < 50; x++) {
+      for (let y = 0; y < 50; y++) {
         PositionArr.push(new Vector3(x, 0, y));
       }
     }
@@ -33,26 +33,16 @@ const Effect1Scene = () => {
   });
 
   return (
-    // <Instances ref={ref} position={[0, 1, 0]}>
-    //   {/* <planeGeometry args={[10, 10]} /> */}
-    //   <Point />
-    //   {/* <pointsMaterial size={1} /> */}
-    //   {/* <shader iResolution={new Vector2(size.width, size.height)} /> */}
-    //   {positions.map((position, index) => (
-    //     <group key={index} position={position}>
-    //       <Instance color={"red"} />
-    //     </group>
-    //   ))}
-    // </Instances>
-    <Points limit={1000} range={1000}>
-      <group position={[-4, 0.5, 4]} rotation={[0, 1, 0]}>
+    <Points limit={2500} range={2500}>
+      <group position={[-24.5, 0.5, -24.5]} rotation={[0, 0, 0]}>
         {positions.map((position, i) => (
-          <group>
-            <Box position={position}>
-              <pointsMaterial
+          <group key={i}>
+            <Box position={position} scale={0.9}>
+              {/* <meshStandardMaterial
                 // color={new Color(Math.random(), Math.random(), 0)}
                 color={"blue"}
-              />
+              /> */}
+              <shader />
               <Edges scale={1} threshold={1} color="black" />
             </Box>
           </group>
